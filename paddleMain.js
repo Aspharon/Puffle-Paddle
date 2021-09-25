@@ -43,6 +43,8 @@ var handposx1;
 var handposx;
 var strength;
 
+var frameTime;
+
 var scene;
 
 var game = new Phaser.Game(config);
@@ -87,6 +89,8 @@ function preload ()
 
 function create ()
 {
+    frameTime = 0;
+
     gamestate = 0
 
     score = 0;
@@ -144,7 +148,6 @@ function create ()
     playtext.setDepth(4);
     overlayObjects.push(playtext);
     overlayObjects.push(playbutton);
-    console.log(playbutton);
 
     makeButton(1468, 44, 'closeUnpressed', 'closePressed', 'closeHover', function () {scene.switch.play(); quitGame();} )
 
@@ -212,224 +215,230 @@ function create ()
 * Should be identical to Flash
 * in every way that matters. 
 */
-function update ()
+function update (time, delta)
 {
-    if (gamestate == 1)
-    {
-        if(count >= goal)
-        {
-            count = 0;
-            puffles += 1;
-            if(puffles <= 4)
+    frameTime += delta
+        if (frameTime > 16.5) {
+            frameTime -= 16.5;
+
+            if (gamestate == 1)
             {
-                if(puffles < mostpuffles)
+                if(count >= goal)
                 {
-                    goal = puffles * 10;
-                }
-                else
-                {
-                    goal = puffles * 20;
-                }
-            }
-            else
-            {
-                goal = defaultgoal;
-                if(defaultgoal > 5)
-                {
-                    defaultgoal -= 1;
-                }
-                if(droppedpuffles > 49)
-                {
-                    defaultgoal += 20;
-                    droppedpuffles = 0;
-                }
-            }
-            if(mostpuffles < puffles)
-            {
-                mostpuffles = puffles;
-            }
-            attachpuffle();
-        }
-
-        handposy2 = handposy1;
-        handposy1 = handposy;
-        handposy = game.input.mousePointer.y;
-        handposx2 = handposx1;
-        handposx1 = handposx;
-        handposx = game.input.mousePointer.x;
-        strength = handposy2 - handposy;
-
-        if(strength <= 0)
-        {
-            power = 0;
-        }
-        else
-        {
-            power = strength / 6;
-        }
-        strengthx = handposx2 - handposx;
-
-        var removeList = []
-        for (const puffle of puffleList)
-        {
-            // There's another if statement here in Flash that
-            // set puffles to only be visible below 100 pixels
-            // above the playable area?? I left it out because
-            // I honestly don't see the use.
-
-            if (puffle.y > 1000)
-            {
-                //remove the puffle
-                removeList.push(puffle);
-
-                puffles -= 1;
-                if(puffles <= 4)
-                {
-                    if(puffles < mostpuffles)
+                    count = 0;
+                    puffles += 1;
+                    if(puffles <= 4)
                     {
-                    goal = puffles * 10;
+                        if(puffles < mostpuffles)
+                        {
+                            goal = puffles * 10;
+                        }
+                        else
+                        {
+                            goal = puffles * 20;
+                        }
                     }
                     else
                     {
-                    goal = puffles * 20;
+                        goal = defaultgoal;
+                        if(defaultgoal > 5)
+                        {
+                            defaultgoal -= 1;
+                        }
+                        if(droppedpuffles > 49)
+                        {
+                            defaultgoal += 20;
+                            droppedpuffles = 0;
+                        }
+                    }
+                    if(mostpuffles < puffles)
+                    {
+                        mostpuffles = puffles;
+                    }
+                    attachpuffle();
+                }
+        
+                handposy2 = handposy1;
+                handposy1 = handposy;
+                handposy = game.input.mousePointer.y;
+                handposx2 = handposx1;
+                handposx1 = handposx;
+                handposx = game.input.mousePointer.x;
+                strength = handposy2 - handposy;
+        
+                if(strength <= 0)
+                {
+                    power = 0;
+                }
+                else
+                {
+                    power = strength / 6;
+                }
+                strengthx = handposx2 - handposx;
+        
+                var removeList = []
+                for (const puffle of puffleList)
+                {
+                    // There's another if statement here in Flash that
+                    // set puffles to only be visible below 100 pixels
+                    // above the playable area?? I left it out because
+                    // I honestly don't see the use.
+        
+                    if (puffle.y > 1000)
+                    {
+                        //remove the puffle
+                        removeList.push(puffle);
+        
+                        puffles -= 1;
+                        if(puffles <= 4)
+                        {
+                            if(puffles < mostpuffles)
+                            {
+                            goal = puffles * 10;
+                            }
+                            else
+                            {
+                            goal = puffles * 20;
+                            }
+                        }
+                        else
+                        {
+                            goal = defaultgoal;
+                        }
+                        droppedpuffles += 1;
+                        background.anims.play('miss');
                     }
                 }
-                else
+        
+                // You can't delete something from a list if you're
+                // iterating through that list. At least I assume,
+                // it's like that in C#. In any way, this works.
+                for (const trash of removeList)
                 {
-                    goal = defaultgoal;
+                    const index = puffleList.indexOf(trash);
+                    if (index > -1) {
+                        puffleList.splice(index, 1);
+                    }
+                    trash.sprite.destroy();
+                    delete trash;
                 }
-                droppedpuffles += 1;
-                background.anims.play('miss');
+        
+                scorecount.setText(tickets.toString());
+        
+                if(puffles <= 0)
+                {
+                    tickets = bounces + mostpuffles * role;
+                    gamestate++;
+                    gameover();
+                }
+        
+                paddle.setPosition(handposx, handposy);
+        
+                for (const puffle of puffleList)
+                {
+                    puffle.x += puffle.xv;
+                    puffle.y += puffle.yv;
+                    if(!(puffle.x >= 1440 && puffle.xv >= 0)) // Coordinates here are modified to the new resolution
+                    {
+                        if(puffle.x <= 80 && puffle.xv < 0) // Here as well
+                        {
+                            puffle.xv *= -1;
+                        }
+                    }
+                    else
+                    {
+                        puffle.xv *= -1;
+                    }
+        
+                    if(puffle.yv >= -10)
+                    {
+                        puffle.yv += gravity;
+                    }
+                    else
+                    {
+                        puffle.yv *= 0.9;
+                    }
+        
+                    if(puffle.xv <= 30)
+                    {
+                        if(puffle.xv < -30)
+                        {
+                            puffle.xv *= 0.95;
+                        }
+                    }
+                    else
+                    {
+                        puffle.xv *= 0.95;
+                    }
+        
+                    if(score >= 50)
+                    {
+                        if(wind != true)
+                        {
+                            puffle.xv -= 0.1;
+                        }
+                        else
+                        {
+                            puffle.xv += 0.1;
+                        }
+                        if(windcountdown > 0)
+                        {
+                            windcountdown -= 1;
+                        }
+                    }
+        
+                    if(windcountdown == 0)
+                    {
+                        if(wind != true)
+                        {
+                            wind = true;
+                        }
+                        else
+                        {
+                            wind = false;
+                        }
+                        windcountdown = 480; // Doubled because of doubled framerate.
+                    }
+                    if(puffle.y > -198) // Doubled because of doubled resolution, as well as all the numbers down here.
+                    {
+                        if(puffle.x > handposx - 140 && puffle.x < handposx + 140 && puffle.y + 60 > handposy && puffle.y + 60 < handposy + 200 && puffle.yv >= 0)
+                        {
+                            bouncethepuffle(puffle);
+                        }
+                        if(puffle.x > handposx - 140 && puffle.x < handposx + 140 && puffle.y > handposy && puffle.y < handposy2 && puffle.yv >= 0)
+                        {
+                            bouncethepuffle(puffle);
+                        }
+                        if(puffle.y + 60 > handposy && puffle.y + 60 < handposy + 200 && puffle.x > handposx && puffle.x < handposx2 && puffle.yv >= 0)
+                        {
+                            bouncethepuffle(puffle);
+                        }
+                        if(puffle.y + 60 > handposy && puffle.y + 60 < handposy + 200 && puffle.x < handposx && puffle.x > handposx2 && puffle.yv >= 0)
+                        {
+                            bouncethepuffle(puffle);
+                        }
+                    }
+                    
+                    if(puffle.yv > 6 && (puffle.sprite.anims.currentAnim.key == puffle.color + 'i' || (puffle.sprite.anims.currentAnim.key == puffle.color + 'b' && puffle.sprite.anims.currentFrame.index == 7 )))
+                    {        
+                        puffle.sprite.anims.play( puffle.color + 'd');
+                        puffle.sprite.once('animationcomplete', function (sprite)
+                        {
+                        if (sprite.key === puffle.color + 'd')
+                        {
+                            puffle.sprite.anims.play( puffle.color + 'f');
+                        }
+                        }, this);
+                    }
+                }
+        
+                for (const puffle of puffleList)
+                {
+                    puffle.sprite.setPosition(puffle.x, puffle.y);
+                }
             }
+        
         }
-
-        // You can't delete something from a list if you're
-        // iterating through that list. At least I assume,
-        // it's like that in C#. In any way, this works.
-        for (const trash of removeList)
-        {
-            const index = puffleList.indexOf(trash);
-            if (index > -1) {
-                puffleList.splice(index, 1);
-            }
-            trash.sprite.destroy();
-            delete trash;
-        }
-
-        scorecount.setText(tickets.toString());
-
-        if(puffles <= 0)
-        {
-            tickets = bounces + mostpuffles * role;
-            gamestate++;
-            gameover();
-        }
-
-        paddle.setPosition(handposx, handposy);
-
-        for (const puffle of puffleList)
-        {
-            puffle.x += puffle.xv;
-            puffle.y += puffle.yv;
-            if(!(puffle.x >= 1440 && puffle.xv >= 0)) // Coordinates here are modified to the new resolution
-            {
-                if(puffle.x <= 80 && puffle.xv < 0) // Here as well
-                {
-                    puffle.xv *= -1;
-                }
-            }
-            else
-            {
-                puffle.xv *= -1;
-            }
-
-            if(puffle.yv >= -10)
-            {
-                puffle.yv += gravity;
-            }
-            else
-            {
-                puffle.yv *= 0.9;
-            }
-
-            if(puffle.xv <= 30)
-            {
-                if(puffle.xv < -30)
-                {
-                    puffle.xv *= 0.95;
-                }
-            }
-            else
-            {
-                puffle.xv *= 0.95;
-            }
-
-            if(score >= 50)
-            {
-                if(wind != true)
-                {
-                    puffle.xv -= 0.1;
-                }
-                else
-                {
-                    puffle.xv += 0.1;
-                }
-                if(windcountdown > 0)
-                {
-                    windcountdown -= 1;
-                }
-            }
-
-            if(windcountdown == 0)
-            {
-                if(wind != true)
-                {
-                    wind = true;
-                }
-                else
-                {
-                    wind = false;
-                }
-                windcountdown = 480; // Doubled because of doubled framerate.
-            }
-            if(puffle.y > -198) // Doubled because of doubled resolution, as well as all the numbers down here.
-            {
-                if(puffle.x > handposx - 140 && puffle.x < handposx + 140 && puffle.y + 60 > handposy && puffle.y + 60 < handposy + 200 && puffle.yv >= 0)
-                {
-                    bouncethepuffle(puffle);
-                }
-                if(puffle.x > handposx - 140 && puffle.x < handposx + 140 && puffle.y > handposy && puffle.y < handposy2 && puffle.yv >= 0)
-                {
-                    bouncethepuffle(puffle);
-                }
-                if(puffle.y + 60 > handposy && puffle.y + 60 < handposy + 200 && puffle.x > handposx && puffle.x < handposx2 && puffle.yv >= 0)
-                {
-                    bouncethepuffle(puffle);
-                }
-                if(puffle.y + 60 > handposy && puffle.y + 60 < handposy + 200 && puffle.x < handposx && puffle.x > handposx2 && puffle.yv >= 0)
-                {
-                    bouncethepuffle(puffle);
-                }
-            }
-            
-            if(puffle.yv > 6 && (puffle.sprite.anims.currentAnim.key == puffle.color + 'i' || (puffle.sprite.anims.currentAnim.key == puffle.color + 'b' && puffle.sprite.anims.currentFrame.index == 7 )))
-            {        
-                puffle.sprite.anims.play( puffle.color + 'd');
-                puffle.sprite.once('animationcomplete', function (sprite)
-                {
-                if (sprite.key === puffle.color + 'd')
-                {
-                    puffle.sprite.anims.play( puffle.color + 'f');
-                }
-                }, this);
-            }
-        }
-
-        for (const puffle of puffleList)
-        {
-            puffle.sprite.setPosition(puffle.x, puffle.y);
-        }
-    }
 }
 
 /*
